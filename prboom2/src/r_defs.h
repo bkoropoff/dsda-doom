@@ -384,6 +384,17 @@ typedef struct msecnode_s
   dboolean visited; // killough 4/4/98, 4/7/98: used in search algorithms
 } msecnode_t;
 
+typedef enum segflags_e
+{
+  SEGF_NONE = 0x0,
+  // Seg appears to be part of a render hack
+  SEGF_HACKED = 0x1,
+  // Part of chunk perimeter, but not used in path
+  SEGF_ORPHAN = 0x2,
+  // Generic mark
+  SEGF_MARK = 0x4
+} segflags_t;
+
 //
 // The LineSeg.
 //
@@ -425,9 +436,12 @@ struct polyobj_s;
 typedef struct subsector_s
 {
   sector_t *sector;
+  int chunk;
   // e6y: support for extended nodes
   // 'int' instead of 'short'
   int numlines, firstline;
+  // GL: first and number of renderable segs in gl_rstate.rsegs
+  int numrsegs, firstrseg;
 
   // hexen
   struct polyobj_s *poly;
@@ -627,5 +641,73 @@ extern int Sky2Texture;
 extern fixed_t Sky1ColumnOffset;
 extern fixed_t Sky2ColumnOffset;
 extern dboolean DoubleSky;
+
+
+// A plane which can be a bleed source during rendering.
+// Everything needed to render it in one place.
+// FIXME: this struct is way too large
+typedef struct
+{
+  sector_t dummysector;
+  visplane_t dummyplane;
+  sector_t* sector;
+  visplane_t* plane;
+  int lightlevel;
+  int validcount;
+} sourceplane_t;
+
+typedef enum
+{
+  BLEED_FLOOR_OVER,
+  BLEED_FLOOR_UNDER,
+  BLEED_FLOOR_THROUGH,
+  BLEED_CEILING_OVER,
+  BLEED_CEILING_UNDER,
+  BLEED_CEILING_THROUGH,
+} bleedtype_t;
+
+// A bleed target in a chunk
+typedef struct
+{
+  sourceplane_t* source;
+  int depth;
+} bleedtarget_t;
+
+// GL: A set of mutually-adjoint, normal subsectors in a sector.  These should
+// always end up being rendered with the same floor/ceiling flats.
+// FIXME: this struct needs to go on a diet
+typedef struct
+{
+  // Containing sector
+  sector_t* sector;
+  // First and number of bleed targets
+  int firstbleed;
+  int numbleeds;
+
+  // Flat information
+  sourceplane_t floor;
+  sourceplane_t ceiling;
+
+  // Incoming Flat bleeding effects
+  bleedtarget_t floorover;
+  bleedtarget_t floorunder;
+  bleedtarget_t ceilingover;
+  bleedtarget_t ceilingunder;
+  bleedtarget_t floorthrough;
+  bleedtarget_t ceilingthrough;
+
+  int validcount;
+  dboolean deferred;
+} gl_chunk_t;
+
+#define NO_CHUNK ((int) -1)
+
+// A (potential) flat bleed between chunks
+typedef struct
+{
+  gl_chunk_t* target;
+  bleedtype_t type;
+  int depth;
+} bleed_t;
 
 #endif

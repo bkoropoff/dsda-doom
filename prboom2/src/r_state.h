@@ -114,4 +114,49 @@ extern int              rw_angle1;
 extern visplane_t       *floorplane;
 extern visplane_t       *ceilingplane;
 
+// GL-only render state
+typedef struct
+{
+  // GL vertices
+  vertex_t* vertexes;
+  int numvertexes;
+
+  // GL segs
+  seg_t* segs;
+  int numsegs;
+
+  // Renderable GL segs (no minisegs)
+  seg_t* rsegs;
+
+  // GL subsectors
+  subsector_t* subsectors;
+  int numsubsectors;
+
+  // Subsector seen flags
+  byte* map_subsectors;
+
+  // GL nodes
+  node_t* nodes;
+  int numnodes;
+
+  // GL chunks, connected group of subsectors in a sector
+  gl_chunk_t* chunks;
+  unsigned int numchunks;
+
+  // Bleed lists for chunks
+  bleed_t* bleeds;
+  unsigned int numbleeds;
+
+  // Deferred chunks (used by gl_bsp.c)
+  gl_chunk_t** deferred;
+} gl_rstate_t;
+
+extern gl_rstate_t gl_rstate;
+
+// Resolve chunk id to pointer
+static inline gl_chunk_t* GL_Chunk(int id)
+{
+  return id == NO_CHUNK ? NULL : &gl_rstate.chunks[id];
+}
+
 #endif
