@@ -2280,21 +2280,17 @@ const char * comp_lev_str[MAX_COMPATIBILITY_LEVEL] =
 //
 //==========================================================================
 
-void RecalculateDrawnSubsectors(void)
+void G_RecalculateDrawnSubsectors(void)
 {
   int i, j;
 
-  for (i = 0; i < numsubsectors; i++)
+  for (i = 0; i < gl_rstate.numsubsectors; i++)
   {
-    subsector_t *sub = &subsectors[i];
-    seg_t *seg = &segs[sub->firstline];
+    subsector_t *sub = &gl_rstate.subsectors[i];
+    seg_t *seg = &gl_rstate.segs[sub->firstline];
     for (j = 0; j < sub->numlines; j++, seg++)
-    {
       if (seg->linedef && seg->linedef->flags & ML_MAPPED)
-      {
-        map_subsectors[i] = 1;
-      }
-    }
+        gl_rstate.map_subsectors[i] = 1;
   }
 
   gld_ResetTexturedAutomap();
@@ -2312,7 +2308,8 @@ void G_AfterLoad(void)
     S_ChangeMusInfoMusic(musinfo.current_item, true);
   }
 
-  RecalculateDrawnSubsectors();
+  if (V_IsOpenGLMode())
+    G_RecalculateDrawnSubsectors();
 
   if (hexen)
   {

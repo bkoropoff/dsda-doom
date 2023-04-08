@@ -127,6 +127,8 @@ PUREFUNC int R_PointOnSegSide(fixed_t x, fixed_t y, const seg_t *line);
 angle_t R_PointToAngle2(fixed_t x1, fixed_t y1, fixed_t x, fixed_t y);
 subsector_t *R_PointInSubsector(fixed_t x, fixed_t y);
 
+subsector_t *GL_PointInSubsector(fixed_t x, fixed_t y);
+
 //e6y: made more precise
 angle_t R_PointToAngleEx(fixed_t x, fixed_t y);
 angle_t R_PointToAngleEx2(fixed_t x1, fixed_t y1, fixed_t x, fixed_t y);

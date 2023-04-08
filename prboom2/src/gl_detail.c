@@ -57,6 +57,8 @@
 #include "e6y.h"
 #include "i_system.h"
 
+#include "dsda/bsp.h"
+
 int render_usedetail;
 
 detail_t *details;
@@ -363,12 +365,12 @@ void gld_DrawFlatDetail_NoARB(GLFlat *flat)
 
   glScalef(w, h, 1.0f);
 
-  if (flat->sectornum>=0)
+  if (flat->chunk>=0)
   {
     // go through all loops of this sector
-    for (loopnum=0; loopnum<sectorloops[flat->sectornum].loopcount; loopnum++)
+    for (loopnum=0; loopnum<chunkloops[flat->chunk].loopcount; loopnum++)
     {
-      currentloop=&sectorloops[flat->sectornum].loops[loopnum];
+      currentloop=&chunkloops[flat->chunk].loops[loopnum];
       glDrawArrays(currentloop->mode,currentloop->vertexindex,currentloop->vertexcount);
     }
   }

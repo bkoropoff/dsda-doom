@@ -39,6 +39,8 @@ extern side_t   *sidedef;
 extern line_t   *linedef;
 extern sector_t *frontsector;
 extern sector_t *backsector;
+extern sector_t *poly_frontsector;
+extern dboolean poly_add_line;
 
 /* old code -- killough:
  * extern drawseg_t drawsegs[MAXDRAWSEGS];
@@ -54,6 +56,9 @@ extern drawseg_t *ds_p;
 void R_ClearClipSegs(void);
 void R_ClearDrawSegs(void);
 void R_RenderBSPNode(int bspnum);
+
+void GL_RenderBSPNode(int bspnum);
+void GL_RenderDeferred(void);
 
 /* killough 4/13/98: fake floors/ceilings for deep water / fake ceilings: */
 sector_t *R_FakeFlat(sector_t *, sector_t *, int *, int *, dboolean);

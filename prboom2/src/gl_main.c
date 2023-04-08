@@ -77,6 +77,7 @@
 #include "dsda/settings.h"
 #include "dsda/stretch.h"
 #include "dsda/gl/render_scale.h"
+#include "dsda/bsp.h"
 
 int gl_preprocessed = false;
 
@@ -381,22 +382,22 @@ void gld_MapDrawSubsectors(player_t *plr, int fx, int fy, fixed_t mx, fixed_t my
   if (alpha == 0)
     return;
 
-  if (numsubsectors > visible_subsectors_size)
+  if (gl_rstate.numsubsectors > visible_subsectors_size)
   {
-    visible_subsectors_size = numsubsectors;
+    visible_subsectors_size = gl_rstate.numsubsectors;
     visible_subsectors = Z_Realloc(visible_subsectors, visible_subsectors_size * sizeof(visible_subsectors[0]));
   }
 
   visible_subsectors_count = 0;
   if (dsda_RevealAutomap())
   {
-    visible_subsectors_count = numsubsectors;
+    visible_subsectors_count = gl_rstate.numsubsectors;
   }
   else
   {
-    for (i = 0; i < numsubsectors; i++)
+    for (i = 0; i < gl_rstate.numsubsectors; i++)
     {
-      visible_subsectors_count += map_subsectors[i];
+      visible_subsectors_count += gl_rstate.map_subsectors[i];
     }
   }
 
@@ -407,11 +408,11 @@ void gld_MapDrawSubsectors(player_t *plr, int fx, int fy, fixed_t mx, fixed_t my
     visible_subsectors_count_prev = visible_subsectors_count;
 
     visible_subsectors_count = 0;
-    for (i = 0; i < numsubsectors; i++)
+    for (i = 0; i < gl_rstate.numsubsectors; i++)
     {
-      if (map_subsectors[i] || dsda_RevealAutomap())
+      if (gl_rstate.map_subsectors[i] || dsda_RevealAutomap())
       {
-        visible_subsectors[visible_subsectors_count++] = &subsectors[i];
+        visible_subsectors[visible_subsectors_count++] = &gl_rstate.subsectors[i];
       }
     }
 
@@ -460,7 +461,7 @@ void gld_MapDrawSubsectors(player_t *plr, int fx, int fy, fixed_t mx, fixed_t my
   for (i = 0; i < visible_subsectors_count; i++)
   {
     subsector_t *sub = visible_subsectors[i];
-    int ssidx = sub - subsectors;
+    int ssidx = sub - gl_rstate.subsectors;
 
     if (sub->sector->bbox[BOXLEFT] > am_frame.bbox[BOXRIGHT] ||
       sub->sector->bbox[BOXRIGHT] < am_frame.bbox[BOXLEFT] ||
@@ -1135,11 +1136,9 @@ GLuint flats_vbo_id = 0; // ID of VBO
 
 vbo_xyz_uv_t *flats_vbo = NULL;
 
-GLSeg *gl_segs=NULL;
 GLSeg *gl_lines=NULL;
 
 byte rendermarker=0;
-byte *segrendered; // true if sector rendered (only here for malloc)
 byte *linerendered[2]; // true if linedef rendered (only here for malloc)
 
 float roll     = 0.0f;
@@ -1571,8 +1570,6 @@ static void gld_CalculateWallV(GLWall *wall, seg_t *seg, int peg,
 
 void gld_AddWall(seg_t *seg)
 {
-  extern sector_t *poly_frontsector;
-  extern dboolean poly_add_line;
   GLWall wall;
   GLTexture *temptex;
   sector_t *frontsector;
@@ -2046,6 +2043,7 @@ static void gld_DrawFlat(GLFlat *flat)
   int has_offset;
   unsigned int flags;
 
+
   dsda_RecordVisPlane();
 
   has_detail =
@@ -2055,7 +2053,7 @@ static void gld_DrawFlat(GLFlat *flat)
 
   has_offset = (has_detail || (flat->flags & GLFLAT_HAVE_TRANSFORM));
 
-  if ((sectorloops[flat->sectornum].flags & SECTOR_CLAMPXY) && (!has_detail) &&
+  if ((chunkloops[flat->chunk].flags & SECTOR_CLAMPXY) && (!has_detail) &&
       (flat->gltexture->flags & GLTEXTURE_HIRES) &&
       !(flat->flags & GLFLAT_HAVE_TRANSFORM))
     flags = GLTEXTURE_CLAMPXY;
@@ -2102,13 +2100,13 @@ static void gld_DrawFlat(GLFlat *flat)
     glScalef(w, h, 1.0f);
   }
 
-  if (flat->sectornum>=0)
+  if (flat->chunk>=0)
   {
-    // go through all loops of this sector
-    for (loopnum=0; loopnum<sectorloops[flat->sectornum].loopcount; loopnum++)
+    // go through all loops of this chunk
+    for (loopnum=0; loopnum<chunkloops[flat->chunk].loopcount; loopnum++)
     {
       // set the current loop
-      currentloop=&sectorloops[flat->sectornum].loops[loopnum];
+      currentloop=&chunkloops[flat->chunk].loops[loopnum];
       glDrawArrays(currentloop->mode,currentloop->vertexindex,currentloop->vertexcount);
     }
   }
@@ -2131,23 +2129,20 @@ static void gld_DrawFlat(GLFlat *flat)
 
 // gld_AddFlat
 //
-// This draws on flat for the sector "num"
+// This draws on flat for the chunk
 // The ceiling boolean indicates if the flat is a floor(false) or a ceiling(true)
 
-static void gld_AddFlat(int sectornum, dboolean ceiling, visplane_t *plane)
+void gld_AddFlat(int chunk, dboolean ceiling, visplane_t *plane, sector_t* sector)
 {
-  sector_t *sector; // the sector we want to draw
   sector_t tempsec; // needed for R_FakeFlat
   int floorlightlevel;      // killough 3/16/98: set floor lightlevel
   int ceilinglightlevel;    // killough 4/11/98
   GLFlat flat;
   dboolean indexed;
 
-  if (sectornum<0)
-    return;
-  flat.sectornum=sectornum;
-  sector=&sectors[sectornum]; // get the sector
-  sector=R_FakeFlat(sector, &tempsec, &floorlightlevel, &ceilinglightlevel, false); // for boom effects
+  flat.chunk = chunk;
+  sector = R_FakeFlat(sector, &tempsec, &floorlightlevel, &ceilinglightlevel,
+                      false); // for boom effects
   flat.flags = (ceiling ? GLFLAT_CEILING : 0);
 
   indexed = V_IsWorldLightmodeIndexed();
@@ -2330,22 +2325,6 @@ static void gld_AddFlat(int sectornum, dboolean ceiling, visplane_t *plane)
     scene_has_flat_details++;
 
   gld_AddDrawItem(((flat.flags & GLFLAT_CEILING) ? GLDIT_CEILING : GLDIT_FLOOR), &flat);
-}
-
-void gld_AddPlane(int subsectornum, visplane_t *floor, visplane_t *ceiling)
-{
-  subsector_t *subsector;
-
-  subsector = &subsectors[subsectornum];
-  if (!subsector)
-    return;
-
-  // render the floor
-  if (floor && floor->height < viewz)
-    gld_AddFlat(subsector->sector->iSectorID, false, floor);
-  // render the ceiling
-  if (ceiling && ceiling->height > viewz)
-    gld_AddFlat(subsector->sector->iSectorID, true, ceiling);
 }
 
 /*****************

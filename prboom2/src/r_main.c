@@ -68,6 +68,7 @@
 #include "dsda/signal_context.h"
 #include "dsda/stretch.h"
 #include "dsda/gl/render_scale.h"
+#include "dsda/bsp.h"
 
 #include "hexen/a_action.h"
 
@@ -752,6 +753,19 @@ subsector_t *R_PointInSubsector(fixed_t x, fixed_t y)
   return &subsectors[nodenum & ~NF_SUBSECTOR];
 }
 
+subsector_t *GL_PointInSubsector(fixed_t x, fixed_t y)
+{
+  int nodenum = gl_rstate.numnodes-1;
+
+  // special case for trivial maps (single subsector, no nodes)
+  if (numnodes == 0)
+    return subsectors;
+
+  while (!(nodenum & NF_SUBSECTOR))
+    nodenum = gl_rstate.nodes[nodenum].children[R_PointOnSide(x, y, gl_rstate.nodes+nodenum)];
+  return &gl_rstate.subsectors[nodenum & ~NF_SUBSECTOR];
+}
+
 //
 // R_SetupFreelook
 //
@@ -925,16 +939,20 @@ static void R_RenderBSPNodes(void)
 {
   // Make displayed player invisible locally
   if (localQuakeHappening[displayplayer] && gamestate == GS_LEVEL)
-  {
     players[displayplayer].mo->flags2 |= MF2_DONTDRAW;
-    R_RenderBSPNode(numnodes - 1);  // head node is the last node output
-    players[displayplayer].mo->flags2 &= ~MF2_DONTDRAW;
+
+  if (V_IsOpenGLMode())
+  {
+    GL_RenderBSPNode(gl_rstate.numnodes - 1);
+    GL_RenderDeferred();
   }
   else
   {
-    // The head node is the last node output.
     R_RenderBSPNode(numnodes - 1);
   }
+
+  if (localQuakeHappening[displayplayer] && gamestate == GS_LEVEL)
+    players[displayplayer].mo->flags2 &= ~MF2_DONTDRAW;
 }
 
 //

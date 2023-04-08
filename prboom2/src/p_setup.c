@@ -108,8 +108,6 @@ side_t   *sides;
 int      *sslines_indexes;
 ssline_t *sslines;
 
-byte     *map_subsectors;
-
 // GL-only structures
 gl_rstate_t gl_rstate = {0};
 
@@ -3755,7 +3753,6 @@ void P_SetupLevel(int episode, int map, int playermask, skill_t skill)
     Z_Free(segs);
     Z_Free(nodes);
     Z_Free(subsectors);
-    Z_Free(map_subsectors);
 
     Z_Free(blocklinks);
     Z_Free(blockmaplump);
@@ -3848,9 +3845,6 @@ void P_SetupLevel(int episode, int map, int playermask, skill_t skill)
   {
     P_InitSubsectorsLines();
   }
-
-  map_subsectors = calloc_IfSameLevel(map_subsectors,
-    numsubsectors, sizeof(map_subsectors[0]));
 
   // reject loading and underflow padding separated out into new function
   P_LoadReject(level_components.reject);

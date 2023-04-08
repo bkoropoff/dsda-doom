@@ -95,6 +95,7 @@
 
 #include "heretic/mn_menu.h"
 #include "heretic/sb_bar.h"
+#include "hexen/po_man.h"
 
 /****************************
  *
@@ -3133,6 +3134,9 @@ void M_ChangeVideoMode(void)
 {
   V_ChangeScreenResolution();
   M_ChangeMaxViewPitch();
+  PO_ChangeRenderMode();
+  if (V_IsOpenGLMode())
+    G_RecalculateDrawnSubsectors();
 }
 
 void M_ChangeUseGLSurface(void)
@@ -5424,8 +5428,8 @@ void M_Init(void)
 
   M_ChangeDemoSmoothTurns();
 
-  M_ChangeMapTextured();
   M_ChangeMapMultisamling();
+  M_ChangeMapTextured();
 
   M_ChangeStretch();
 

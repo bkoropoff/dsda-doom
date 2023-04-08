@@ -2463,11 +2463,6 @@ static void AM_drawCrosshair(int color)
 void M_ChangeMapTextured(void)
 {
   map_textured = dsda_IntConfig(dsda_config_map_textured);
-
-  if (in_game && gamestate == GS_LEVEL && V_IsOpenGLMode())
-  {
-    gld_ProcessTexturedMap();
-  }
 }
 
 void M_ChangeMapMultisamling(void)

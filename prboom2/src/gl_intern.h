@@ -152,7 +152,7 @@ typedef enum
 
 typedef struct
 {
-  int sectornum;
+  int chunk;
   float light; // the lightlevel of the flat
   float fogdensity;
   float uoffs,voffs; // the texture coordinates
@@ -185,13 +185,7 @@ typedef struct
   int loopcount; // number of loops for this sector
   GLLoopDef *loops; // the loops itself
   unsigned int flags;
-} GLSector;
-
-typedef struct
-{
-  int loopcount; // number of loops for this sector
-  GLLoopDef *loops; // the loops itself
-} GLMapSubsector;
+} GLLoops;
 
 typedef struct
 {
@@ -234,7 +228,6 @@ typedef struct
   float y;
 } GLHealthBar;
 
-extern GLSeg *gl_segs;
 extern GLSeg *gl_lines;
 
 #define GLDWF_TOP 1
@@ -342,8 +335,8 @@ extern GLDrawInfo gld_drawinfo;
 void gld_FreeDrawInfo(void);
 void gld_ResetDrawInfo(void);
 
-extern GLSector *sectorloops;
-extern GLMapSubsector *subsectorloops;
+extern GLLoops *subsectorloops;
+extern GLLoops *chunkloops;
 
 extern int gl_tex_format;
 extern GLfloat gl_texture_filter_anisotropic;
@@ -535,7 +528,6 @@ typedef struct vbo_xy_uv_rgba_s
 } PACKEDATTR vbo_xy_uv_rgba_t;
 
 // preprocessing
-extern byte *segrendered; // true if sector rendered (only here for malloc)
 extern byte *linerendered[2]; // true if linedef rendered (only here for malloc)
 extern GLuint flats_vbo_id;
 

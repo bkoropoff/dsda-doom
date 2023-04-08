@@ -122,7 +122,7 @@ void gld_PreprocessLevel(void);
 void gld_Set2DMode();
 void gld_InitDrawScene(void);
 void gld_StartDrawScene(void);
-void gld_AddPlane(int subsectornum, visplane_t *floor, visplane_t *ceiling);
+void gld_AddFlat(int chunk, dboolean ceiling, visplane_t *plane, sector_t* sector);
 void gld_AddWall(seg_t *seg);
 void gld_ProjectSprite(mobj_t* thing, int lightlevel);
 void gld_DrawScene(player_t *player);
@@ -147,8 +147,6 @@ dboolean gld_SphereInFrustum(float x, float y, float z, float radius);
 
 //missing flats (fake floors and ceilings)
 extern dboolean gl_use_stencil;
-sector_t* GetBestFake(sector_t *sector, int ceiling, int validcount);
-sector_t* GetBestBleedSector(sector_t* source, enum bleedtype type);
 
 void gld_DrawMapLines(void);
 
@@ -156,7 +154,6 @@ void gld_DrawMapLines(void);
 void gld_MultisamplingInit(void);
 void gld_MultisamplingSet(void);
 
-void gld_ProcessTexturedMap(void);
 void gld_ResetTexturedAutomap(void);
 void gld_MapDrawSubsectors(player_t *plr, int fx, int fy, fixed_t mx, fixed_t my, int fw, int fh, fixed_t scale);
 
