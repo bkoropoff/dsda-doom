@@ -234,6 +234,8 @@ set(COMMON_SRC
     dsda/udmf.h
     dsda/utility.c
     dsda/utility.h
+    dsda/workpool.c
+    dsda/workpool.h
     dsda/zipfile.c
     dsda/zipfile.h
     dstrings.c
