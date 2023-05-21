@@ -68,6 +68,7 @@
 #include "dsda/signal_context.h"
 #include "dsda/stretch.h"
 #include "dsda/gl/render_scale.h"
+#include "dsda/bsp.h"
 
 #include "hexen/a_action.h"
 
@@ -199,6 +200,28 @@ PUREFUNC int R_PointOnSegSide(fixed_t x, fixed_t y, const seg_t *line)
   fixed_t ly = line->v1->y;
   fixed_t ldx = line->v2->x - lx;
   fixed_t ldy = line->v2->y - ly;
+
+  if (!ldx)
+    return x <= lx ? ldy > 0 : ldy < 0;
+
+  if (!ldy)
+    return y <= ly ? ldx < 0 : ldx > 0;
+
+  x -= lx;
+  y -= ly;
+
+  // Try to quickly decide by looking at sign bits.
+  if ((ldy ^ ldx ^ x ^ y) < 0)
+    return (ldy ^ x) < 0;          // (left is negative)
+  return FixedMul(y, ldx>>FRACBITS) >= FixedMul(ldy>>FRACBITS, x);
+}
+
+PUREFUNC int GL_PointOnSegSide(fixed_t x, fixed_t y, const vertex_t *v1, const vertex_t *v2)
+{
+  fixed_t lx = v1->x;
+  fixed_t ly = v1->y;
+  fixed_t ldx = v2->x - lx;
+  fixed_t ldy = v2->y - ly;
 
   if (!ldx)
     return x <= lx ? ldy > 0 : ldy < 0;
@@ -750,6 +773,19 @@ subsector_t *R_PointInSubsector(fixed_t x, fixed_t y)
   return &subsectors[nodenum & ~NF_SUBSECTOR];
 }
 
+subsector_t *GL_PointInSubsector(fixed_t x, fixed_t y)
+{
+  int nodenum = gl_rstate.numnodes-1;
+
+  // special case for trivial maps (single subsector, no nodes)
+  if (numnodes == 0)
+    return subsectors;
+
+  while (!(nodenum & NF_SUBSECTOR))
+    nodenum = gl_rstate.nodes[nodenum].children[R_PointOnSide(x, y, gl_rstate.nodes+nodenum)];
+  return &gl_rstate.subsectors[nodenum & ~NF_SUBSECTOR];
+}
+
 //
 // R_SetupFreelook
 //
@@ -923,16 +959,15 @@ static void R_RenderBSPNodes(void)
 {
   // Make displayed player invisible locally
   if (localQuakeHappening[displayplayer] && gamestate == GS_LEVEL)
-  {
     players[displayplayer].mo->flags2 |= MF2_DONTDRAW;
-    R_RenderBSPNode(numnodes - 1);  // head node is the last node output
-    players[displayplayer].mo->flags2 &= ~MF2_DONTDRAW;
-  }
+
+  if (V_IsOpenGLMode())
+    GL_RenderBSP();
   else
-  {
-    // The head node is the last node output.
     R_RenderBSPNode(numnodes - 1);
-  }
+
+  if (localQuakeHappening[displayplayer] && gamestate == GS_LEVEL)
+    players[displayplayer].mo->flags2 &= ~MF2_DONTDRAW;
 }
 
 //
