@@ -513,6 +513,9 @@ set(DSDA_SOURCES
 function(AddGameExecutable TARGET SOURCES)
     set(SOURCES
         ${SOURCES}
+        gl_aintv.c
+        gl_aintv.h
+        gl_bsp.c
         gl_clipper.c
         gl_drawinfo.c
         gl_fbo.c
