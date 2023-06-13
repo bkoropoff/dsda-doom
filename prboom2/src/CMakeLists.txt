@@ -11,12 +11,36 @@ set(COMMON_SRC
     doomtype.h
     dsda.c
     dsda.h
+    dsda/ajbsp/bsp.h
+    dsda/ajbsp/level.cc
+    dsda/ajbsp/local.h
+    dsda/ajbsp/misc.cc
+    dsda/ajbsp/node.cc
+    dsda/ajbsp/parse.cc
+    dsda/ajbsp/parse.h
+    dsda/ajbsp/raw_def.h
+    dsda/ajbsp/system.h
+    dsda/ajbsp/utility.cc
+    dsda/ajbsp/utility.h
+    dsda/ajbsp/wad.cc
+    dsda/ajbsp/wad.h
+    dsda/ajbsp/glue.h
+    dsda/ajbsp/glue.cc
     dsda/analysis.c
     dsda/analysis.h
     dsda/args.c
     dsda/args.h
     dsda/brute_force.c
     dsda/brute_force.h
+    dsda/bsp.c
+    dsda/bsp.h
+    dsda/bspbleed.c
+    dsda/bspchunk.c
+    dsda/bspdump.c
+    dsda/bspdump.h
+    dsda/bspnodes.c
+    dsda/bsprender.c
+    dsda/bspinternal.h
     dsda/build.c
     dsda/build.h
     dsda/compatibility.c
@@ -37,6 +61,8 @@ set(COMMON_SRC
     dsda/demo.h
     dsda/destructible.c
     dsda/destructible.h
+    dsda/dgeom.h
+    dsda/dgeom.c
     dsda/endoom.c
     dsda/endoom.h
     dsda/excmd.c
@@ -225,6 +251,8 @@ set(COMMON_SRC
     dsda/utility/string_view.h
     dsda/wad_stats.c
     dsda/wad_stats.h
+    dsda/workpool.c
+    dsda/workpool.h
     dsda/zipfile.c
     dsda/zipfile.h
     dstrings.c
@@ -487,6 +515,7 @@ set(DSDA_SOURCES
 function(AddGameExecutable TARGET SOURCES)
     set(SOURCES
         ${SOURCES}
+        gl_bsp.c
         gl_clipper.c
         gl_drawinfo.c
         gl_fbo.c

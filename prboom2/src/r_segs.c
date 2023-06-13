@@ -230,16 +230,16 @@ static fixed_t R_ScaleFromGlobalAngle(angle_t visangle)
 
 const int fake_contrast_value = 16;
 
-static dboolean R_FakeContrast(seg_t *seg)
+static dboolean R_FakeContrast(side_t* side)
 {
-  return fake_contrast_mode != FAKE_CONTRAST_MODE_OFF && seg && !(seg->sidedef->flags & SF_NOFAKECONTRAST) && !hexen;
+  return fake_contrast_mode != FAKE_CONTRAST_MODE_OFF && !(side->flags & SF_NOFAKECONTRAST) && !hexen;
 }
 
 void R_AddContrast(seg_t *seg, int *base_lightlevel)
 {
   /* cph - ...what is this for? adding contrast to rooms?
    * It looks crap in outdoor areas */
-  if (R_FakeContrast(seg))
+  if (R_FakeContrast(seg->sidedef))
   {
     if (seg->linedef->dy == 0)
     {
@@ -255,6 +255,36 @@ void R_AddContrast(seg_t *seg, int *base_lightlevel)
 
       dx = (double) seg->linedef->dx / FRACUNIT;
       dy = (double) seg->linedef->dy / FRACUNIT;
+
+      *base_lightlevel +=
+        lround(fabs(atan(dy / dx) * 2 / M_PI) * (2 * fake_contrast_value) - fake_contrast_value);
+    }
+  };
+}
+
+void GL_AddContrast(gl_wall_t *wall, int *base_lightlevel)
+{
+  side_t* sidedef = &sides[wall->sidedef];
+  vertex_t* v1 = &vertexes[wall->v1id];
+  vertex_t* v2 = &vertexes[wall->v2id];
+  /* cph - ...what is this for? adding contrast to rooms?
+   * It looks crap in outdoor areas */
+  if (R_FakeContrast(sidedef))
+  {
+    if (v1->y == v2->y)
+    {
+      *base_lightlevel -= fake_contrast_value;
+    }
+    else if (v2->x == v1->x)
+    {
+      *base_lightlevel += fake_contrast_value;
+    }
+    else if (fake_contrast_mode == FAKE_CONTRAST_MODE_SMOOTH || sidedef->flags & SF_SMOOTHLIGHTING)
+    {
+      double dx, dy;
+
+      dx = (double) (v2->x - v1->x) / FRACUNIT;
+      dy = (double) (v2->y - v1->y) / FRACUNIT;
 
       *base_lightlevel +=
         lround(fabs(atan(dy / dx) * 2 / M_PI) * (2 * fake_contrast_value) - fake_contrast_value);
@@ -688,15 +718,6 @@ void R_StoreWallRange(const int start, const int stop)
 
   if(curline->linedef)
     curline->linedef->flags |= ML_MAPPED;
-
-  if (V_IsOpenGLMode())
-  {
-    // proff 11/99: the rest of the calculations is not needed for OpenGL
-    ds_p++->curline = curline;
-    gld_AddWall(curline);
-
-    return;
-  }
 
 #ifdef RANGECHECK
   if (start >=viewwidth || start > stop)

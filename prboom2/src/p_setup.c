@@ -59,6 +59,7 @@
 
 #include "dsda.h"
 #include "dsda/args.h"
+#include "dsda/bsp.h"
 #include "dsda/compatibility.h"
 #include "dsda/destructible.h"
 #include "dsda/id_list.h"
@@ -108,7 +109,8 @@ side_t   *sides;
 int      *sslines_indexes;
 ssline_t *sslines;
 
-byte     *map_subsectors;
+// GL-only structures
+gl_rstate_t gl_rstate = {0};
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 // figgi 08/21/00 -- constants and globals for glBsp support
@@ -220,6 +222,8 @@ size_t     num_deathmatchstarts;   // killough
 
 mapthing_t *deathmatch_p;
 mapthing_t playerstarts[MAX_PLAYER_STARTS][MAX_MAXPLAYERS];
+
+char current_map_lump[9];
 
 static int current_episode = -1;
 static int current_map = -1;
@@ -502,12 +506,6 @@ static int checkGLVertex(int num)
   if (num & 0x8000)
     num = (num&0x7FFF)+firstglvertex;
   return num;
-}
-
-static float GetTexelDistance(int dx, int dy)
-{
-  float fx = (float)(dx)/FRACUNIT, fy = (float)(dy)/FRACUNIT;
-  return (float)((int)(0.5f + (float)sqrt(fx*fx + fy*fy)));
 }
 
 static int GetOffset(vertex_t *v1, vertex_t *v2)
@@ -2008,8 +2006,6 @@ static void P_CalculateLineDefProperties(line_t *ld)
   // Rounding the wall length to the nearest integer
   // when determining length instead of always rounding down
   // There is no more glitches on seams between identical textures.
-  ld->texel_length = GetTexelDistance(ld->dx, ld->dy);
-
   ld->slopetype = !ld->dx                      ? ST_VERTICAL   :
                   !ld->dy                      ? ST_HORIZONTAL :
                   FixedDiv(ld->dy, ld->dx) > 0 ? ST_POSITIVE   : ST_NEGATIVE;
@@ -3680,7 +3676,6 @@ void P_MustRebuildBlockmap(void)
 void P_SetupLevel(int episode, int map, int playermask, skill_t skill)
 {
   int   i;
-  char  lumpname[9];
   int   lumpnum;
 
   char  gl_lumpname[9];
@@ -3717,12 +3712,12 @@ void P_SetupLevel(int episode, int map, int playermask, skill_t skill)
   //    W_Reload ();     killough 1/31/98: W_Reload obsolete
 
   // find map name
-  strcpy(lumpname, MAPNAME(episode, map));
-  lumpnum = W_GetNumForName(lumpname);
+  strcpy(current_map_lump, MAPNAME(episode, map));
+  lumpnum = W_GetNumForName(current_map_lump);
 
-  if (strlen(lumpname) < 6)
+  if (strlen(current_map_lump) < 6)
   {
-    snprintf(gl_lumpname, sizeof(gl_lumpname), "GL_%s", lumpname);
+    snprintf(gl_lumpname, sizeof(gl_lumpname), "GL_%s", current_map_lump);
     gl_lumpnum = W_CheckNumForName(gl_lumpname); // figgi
   }
   else
@@ -3768,7 +3763,6 @@ void P_SetupLevel(int episode, int map, int playermask, skill_t skill)
     Z_Free(segs);
     Z_Free(nodes);
     Z_Free(subsectors);
-    Z_Free(map_subsectors);
 
     Z_Free(blocklinks);
     Z_Free(blockmaplump);
@@ -3777,7 +3771,10 @@ void P_SetupLevel(int episode, int map, int playermask, skill_t skill)
     Z_Free(sides);
     Z_Free(sectors);
     Z_Free(vertexes);
+    Z_Free(gl_rstate.map_lines_seen);
   }
+
+  dsda_ClearBSP(samelevel);
 
   dsda_ResetHealthGroups();
 
@@ -3860,8 +3857,8 @@ void P_SetupLevel(int episode, int map, int playermask, skill_t skill)
     P_InitSubsectorsLines();
   }
 
-  map_subsectors = calloc_IfSameLevel(map_subsectors,
-    numsubsectors, sizeof(map_subsectors[0]));
+  gl_rstate.map_lines_seen = calloc_IfSameLevel(
+      gl_rstate.map_lines_seen, numlines, sizeof(gl_rstate.map_lines_seen[0]));
 
   // reject loading and underflow padding separated out into new function
   P_LoadReject(level_components.reject);
@@ -3947,7 +3944,7 @@ void P_SetupLevel(int episode, int map, int playermask, skill_t skill)
 
   if (gamemode != shareware)
   {
-    S_ParseMusInfo(lumpname);
+    S_ParseMusInfo(current_map_lump);
   }
 
   // clear special respawning que
