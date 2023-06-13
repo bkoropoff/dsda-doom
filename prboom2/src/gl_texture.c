@@ -840,46 +840,38 @@ void gld_SetTexClamp(GLTexture *gltexture, unsigned int flags)
 {
   //if ((gltexture->flags & GLTEXTURE_CLAMPXY) != (flags & GLTEXTURE_CLAMPXY))
   /* sp1n0za 05/2010: simplify */
-  if ((*gltexture->texflags_p ^ flags) & GLTEXTURE_CLAMPXY)
+  if ((*gltexture->texflags_p ^ flags) & (GLTEXTURE_CLAMPXY | GLTEXTURE_BORDER))
   {
-    int need_clamp_x = (flags & GLTEXTURE_CLAMPX);
-    int need_clamp_y = (flags & GLTEXTURE_CLAMPY);
-    int has_clamp_x = (*gltexture->texflags_p & GLTEXTURE_CLAMPX);
-    int has_clamp_y = (*gltexture->texflags_p & GLTEXTURE_CLAMPY);
+    dboolean need_border = !!(flags & GLTEXTURE_BORDER);
+    dboolean need_clamp_x = !!(flags & GLTEXTURE_CLAMPX);
+    dboolean need_clamp_y = !!(flags & GLTEXTURE_CLAMPY);
+    dboolean has_border = !!(*gltexture->texflags_p & GLTEXTURE_BORDER);
+    dboolean has_clamp_x = !!(*gltexture->texflags_p & GLTEXTURE_CLAMPX);
+    dboolean has_clamp_y = !!(*gltexture->texflags_p & GLTEXTURE_CLAMPY);
+    int clamp = need_border ? GL_CLAMP_TO_BORDER : GL_CLAMP_TO_EDGE;
 
-    if (need_clamp_x)
+    if (need_clamp_x != has_clamp_x || need_border != has_border)
     {
-      if (!has_clamp_x)
-      {
+      if (need_clamp_x)
         *gltexture->texflags_p |= GLTEXTURE_CLAMPX;
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-      }
-    }
-    else
-    {
-      if (has_clamp_x)
-      {
+      else
         *gltexture->texflags_p &= ~GLTEXTURE_CLAMPX;
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-      }
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, need_clamp_x ? clamp : GL_REPEAT);
     }
 
-    if (need_clamp_y)
+    if (need_clamp_y != has_clamp_y || need_border != has_border)
     {
-      if (!has_clamp_y)
-      {
+      if (need_clamp_y)
         *gltexture->texflags_p |= GLTEXTURE_CLAMPY;
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-      }
-    }
-    else
-    {
-      if (has_clamp_y)
-      {
+      else
         *gltexture->texflags_p &= ~GLTEXTURE_CLAMPY;
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-      }
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, need_clamp_y ? clamp : GL_REPEAT);
     }
+
+    if (need_border)
+      *gltexture->texflags_p |= GLTEXTURE_BORDER;
+    else
+      *gltexture->texflags_p &= ~GLTEXTURE_BORDER;
   }
 }
 
@@ -1049,7 +1041,7 @@ void gld_BindPatch(GLTexture *gltexture, int cm)
 
   if (last_glTexID == gltexture->texid_p)
   {
-    gld_SetTexClamp(gltexture, GLTEXTURE_CLAMPXY);
+    gld_SetTexClamp(gltexture, GLTEXTURE_CLAMPXY | GLTEXTURE_BORDER);
     return;
   }
 
@@ -1058,7 +1050,7 @@ void gld_BindPatch(GLTexture *gltexture, int cm)
   if (*gltexture->texid_p != 0)
   {
     glBindTexture(GL_TEXTURE_2D, *gltexture->texid_p);
-    gld_SetTexClamp(gltexture, GLTEXTURE_CLAMPXY);
+    gld_SetTexClamp(gltexture, GLTEXTURE_CLAMPXY | GLTEXTURE_BORDER);
     glsl_SetTextureDims(0, gltexture->realtexwidth, gltexture->realtexheight);
     return;
   }
@@ -1074,7 +1066,7 @@ void gld_BindPatch(GLTexture *gltexture, int cm)
 
   gld_BuildTexture(gltexture, buffer, false, gltexture->buffer_width, gltexture->buffer_height);
 
-  gld_SetTexClamp(gltexture, GLTEXTURE_CLAMPXY);
+  gld_SetTexClamp(gltexture, GLTEXTURE_CLAMPXY | GLTEXTURE_BORDER);
   glsl_SetTextureDims(0, gltexture->realtexwidth, gltexture->realtexheight);
 }
 

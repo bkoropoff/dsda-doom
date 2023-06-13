@@ -2971,6 +2971,7 @@ setup_menu_t audiovideo_settings[] = {
   { "Uncapped Framerate", S_YESNO, m_conf, G_X, dsda_config_uncapped_framerate },
   { "FPS Limit", S_NUM, m_conf, G_X, dsda_config_fps_limit },
   { "Fake Contrast", S_CHOICE, m_conf, G_X, dsda_config_fake_contrast_mode, 0, fake_contrast_list },
+  { "GL Texture Filter", S_YESNO, m_conf, G_X, dsda_config_gl_filter },
   { "GL Light Fade", S_CHOICE, m_conf, G_X, dsda_config_gl_fade_mode, 0, gl_fade_mode_list },
   { "Dither Scale", S_NUM, m_conf, G_X, dsda_config_gl_dither_scale },
   EMPTY_LINE,

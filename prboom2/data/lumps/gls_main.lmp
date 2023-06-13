@@ -1,6 +1,8 @@
 #version 110
 #extension GL_GOOGLE_include_directive : require
 
+uniform sampler2D tex;
+
 #ifdef VERTEX
 void main()
 {
@@ -12,47 +14,9 @@ void main()
 
 #ifdef FRAGMENT
 #include "glh_idx.lmp"
-#include "glh_dith.lmp"
-
-uniform sampler2D tex;
-uniform int fade_mode;
-uniform float dscale;
 
 void main()
 {
-  // grab the texel and its color index, which is stuffed into the R channel
-  vec4 texel = texture2D(tex, gl_TexCoord[0].st);
-  float ci = indexColor(texel.r);
-  float li = indexLight(gl_FragCoord.z);
-  vec3 color;
-
-  if (fade_mode == 1)
-  {
-    // Dithered fade mode.
-    // Compute which dither macro-pixel we're in
-    vec2 dp = gl_FragCoord.xy / dscale;
-    // Compute adjustments to light index based on gradient across
-    // macro-pixel, so light level within a macro-pixel is consistent.
-    // (This essentially "pixelates" light levels to match dither scale)
-    float didx = dFdx(li) * fract(dp.x) * dscale;
-    float didy = dFdy(li) * fract(dp.y) * dscale;
-    color = indexRGB(ci, li - didx - didy + dither8(dp));
-  }
-  else if (fade_mode == 2)
-  {
-    // Smooth fade mode.
-    // Apply fine dither to alleviate quantization artifacts when floating point
-    // color value is converted to a normalized integer
-    float d = dither16(gl_FragCoord.xy);
-    color = mix(indexRGB(ci, floor(li)), indexRGB(ci, floor(li + 1.0)), fract(li)) + d / 127.5;
-  }
-  else
-  {
-    // Normal (banded) fade mode.
-    color = indexRGB(ci, li);
-  }
-
-  // Apply color and alpha
-  gl_FragColor = vec4(gl_Color.rgb * color, gl_Color.a * texel.g);
+  gl_FragColor = index2D(tex, gl_TexCoord[0].st, gl_FragCoord.z);
 }
 #endif

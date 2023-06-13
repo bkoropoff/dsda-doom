@@ -1,3 +1,5 @@
+#include "glh_dith.lmp"
+
 // [XA] New "indexed" lightmode shader, which approximates
 // Doom's software lighting algorithm using the COLORMAP.
 // Looks very very close to the software renderer,
@@ -7,12 +9,14 @@
 // and publishing an article explaining how it all works.
 // https://medium.com/@jmickle_/writing-a-doom-style-shader-for-unity-63fa13678634
 
-// [XA] adjusted this value a bit from the truecolor shader,
-// to taste -- seems to match software pretty damn closely
-#define DOOMLIGHTFACTOR 200.0
-
 uniform float lightlevel;
 uniform sampler2D colormap;
+uniform int fade_mode;
+uniform float dscale;
+
+// [XA] adjusted this value a bit from the truecolor shader,
+// to taste -- seems to match software pretty damn closely
+const float lightfactor = 200.0;
 
 // Returns color index based on R texel component
 float indexColor(float r)
@@ -29,7 +33,7 @@ float indexLight(float z)
   // Compute minimal light index (brightest) for light level
   float min_L = clamp(36.0 - L, 0.0, 31.0);
   // Compute and clamp light index
-  return clamp(59.0 + DOOMLIGHTFACTOR - L - DOOMLIGHTFACTOR / max(0.0, z), min_L, 31.0);
+  return clamp(59.0 + lightfactor - L - lightfactor / max(0.0, z), min_L, 31.0);
 }
 
 // Returns RGB palette value based on color and light indices
@@ -42,4 +46,42 @@ vec3 indexRGB(float ci, float li)
   // There are 33 colormaps (32 + invuln), thus the 33 divisor
   li = clamp(floor(li + 0.5), 0.0, 31.0) / 33.0;
   return texture2D(colormap, vec2(ci, li)).rgb;
+}
+
+// Does complete sampling and lighting of indexed texture `tex` at `uv` and depth `z`
+vec4 index2D(sampler2D tex, vec2 uv, float z)
+{
+  vec4 texel = texture2D(tex, uv);
+  float ci = indexColor(texel.r);
+  float li = indexLight(z);
+  vec3 color;
+
+  if (fade_mode == 1)
+  {
+    // Dithered fade mode.
+    // Compute which dither macro-pixel we're in
+    vec2 dp = gl_FragCoord.xy / dscale;
+    // Compute adjustments to light index based on gradient across
+    // macro-pixel, so light level within a macro-pixel is consistent.
+    // (This essentially "pixelates" light levels to match dither scale)
+    float didx = dFdx(li) * fract(dp.x) * dscale;
+    float didy = dFdy(li) * fract(dp.y) * dscale;
+    color = indexRGB(ci, li - didx - didy + dither8(dp));
+  }
+  else if (fade_mode == 2)
+  {
+    // Smooth fade mode.
+    // Apply fine dither to alleviate quantization artifacts when floating point
+    // color value is converted to a normalized integer
+    float d = dither16(gl_FragCoord.xy);
+    color = mix(indexRGB(ci, floor(li)), indexRGB(ci, floor(li + 1.0)), fract(li)) + d / 127.5;
+  }
+  else
+  {
+    // Normal (banded) fade mode.
+    color = indexRGB(ci, li);
+  }
+
+  // Apply color and alpha
+  return vec4(gl_Color.rgb * color, gl_Color.a * texel.g);
 }

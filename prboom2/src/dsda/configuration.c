@@ -1153,6 +1153,10 @@ dsda_config_t dsda_config[dsda_config_count] = {
     "gl_dither_scale", dsda_config_gl_dither_scale,
     dsda_config_int, 1, 30, { 1 }
   },
+  [dsda_config_gl_filter] = {
+    "gl_filter", dsda_config_gl_filter,
+    CONF_BOOL(0), NULL, NOT_STRICT
+  },
   [dsda_config_boom_translucent_sprites] = {
     "boom_translucent_sprites", dsda_config_boom_translucent_sprites,
     CONF_BOOL(1), NULL, NOT_STRICT, deh_changeCompTranslucency

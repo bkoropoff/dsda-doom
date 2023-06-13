@@ -1123,6 +1123,13 @@ static void gld_DrawWall(GLWall *wall)
   else
     flags = 0;
 
+  // If texture coordinates do not wrap around texture, clamp that dimension
+  // to prevent texture filtering bleed
+  if (wall->vb >= 0.0 && wall->vb <= 1.0 && wall->vt >= 0.0 && wall->vb <= 1.0)
+    flags |= GLTEXTURE_CLAMPY;
+  if (wall->ul >= 0.0 && wall->ul <= 1.0 && wall->ur >= 0.0 && wall->ur <= 1.0)
+    flags |= GLTEXTURE_CLAMPX;
+
   gld_BindTexture(wall->gltexture, flags, false);
 
   if (!wall->gltexture)
@@ -1177,6 +1184,15 @@ static void gld_DrawWall(GLWall *wall)
   }
 }
 
+// Normalizes a range of u or v coordinates so that it is positive
+// and as small as possible while still representing the same thing
+static void gld_NormalizeTexRange(float* a, float* b)
+{
+  float c = (*a < *b) ? floor(*a) : floor(*b);
+  *a -= c;
+  *b -= c;
+}
+
 static void gld_CalculateWallY(GLWall *wall, float *lineheight,
                                fixed_t floor_height, fixed_t ceiling_height)
 {
@@ -1205,6 +1221,8 @@ static void gld_CalculateWallU(GLWall *wall, seg_t *seg, int backseg,
     wall->ul = scaled_textureoffset / scaled_texwidth;
     wall->ur = wall->ul + linelength / scaled_texwidth;
   }
+
+  gld_NormalizeTexRange(&wall->ul, &wall->ur);
 }
 
 static void gld_CalculateWallV(GLWall *wall, seg_t *seg, int peg,
@@ -1227,6 +1245,8 @@ static void gld_CalculateWallV(GLWall *wall, seg_t *seg, int peg,
     wall->vt = scaled_rowoffset / scaled_texheight + wall->gltexture->scaleyfac;
     wall->vb = wall->vt + lineheight / scaled_texheight;
   }
+
+  gld_NormalizeTexRange(&wall->vb, &wall->vt);
 }
 
 void gld_AddWall(seg_t *seg)
@@ -1479,6 +1499,7 @@ void gld_AddWall(seg_t *seg)
       fixed_t scaled_texheight;
       fixed_t scaled_rowoffset;
       dboolean wrapmidtex;
+      dboolean trans;
 
       wall.light = gld_CalcLightLevel(R_MidLightLevel(seg->sidedef, base_lightlevel));
       wall.xscale = (float) seg->sidedef->scalex_mid / FRACUNIT;
@@ -1593,7 +1614,10 @@ void gld_AddWall(seg_t *seg)
       wall.vb = (float) (-bottom + ceiling_height) / (float) scaled_texheight;
 
       wall.alpha = seg->linedef->alpha;
-      gld_AddDrawWallItem((wall.alpha == 1.0f ? GLDIT_MWALL : GLDIT_TWALL), &wall);
+
+      // FIXME: only render wall as translucent if it contains holes
+      trans = wall.alpha != 1.0f || dsda_IntConfig(dsda_config_gl_filter);
+      gld_AddDrawWallItem(trans ? GLDIT_TWALL : GLDIT_MWALL, &wall);
       wall.alpha = 1.0f;
     }
 bottomtexture:
@@ -2363,7 +2387,8 @@ void gld_ProjectSprite(mobj_t* thing, int lightlevel)
   {
     gld_AddDrawItem(GLDIT_ASPRITE, &sprite);
   }
-  else if (sprite.alpha != 1.f || sprite.flags & (MF_SHADOW | MF_TRANSLUCENT))
+  else if (sprite.alpha != 1.f || sprite.flags & (MF_SHADOW | MF_TRANSLUCENT) ||
+           dsda_IntConfig(dsda_config_gl_filter))
   {
     gld_AddDrawItem(GLDIT_TSPRITE, &sprite);
   }

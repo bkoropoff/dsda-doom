@@ -51,6 +51,7 @@ set(TABLES
     lumps/nervebex.lmp
     lumps/glshadow.lmp
     lumps/gls_main.lmp
+    lumps/gls_filt.lmp
     lumps/gls_fuzz.lmp
     lumps/gls_sb.lmp
     lumps/glh_idx.lmp

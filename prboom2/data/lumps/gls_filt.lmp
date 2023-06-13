@@ -1,0 +1,103 @@
+#version 110
+#extension GL_GOOGLE_include_directive : require
+
+#ifdef VERTEX
+void main()
+{
+  gl_FrontColor = gl_Color;
+  gl_TexCoord[0] = gl_TextureMatrix[0] * gl_MultiTexCoord0;
+  gl_Position = ftransform();
+}
+#endif
+
+#ifdef FRAGMENT
+#include "glh_idx.lmp"
+
+uniform sampler2D tex;
+uniform vec2 tex_d;
+
+// Approximate maximum samples per fragment for minifiction filter
+const float maxsamp = 64.0;
+
+// Performs a mix between a and b, ignoring color values with an alpha of 0.
+// This prevents color values from transparent areas in patches from bleeding
+// into opaque areas
+vec4 safemix(vec4 a, vec4 b, float m)
+{
+  if (a.a == 0.0)
+    return vec4(b.rgb, b.a * m);
+  if (b.a == 0.0)
+    return vec4(a.rgb, a.a * (1.0 - m));
+  return mix(a, b, m);
+}
+
+void main()
+{
+  vec2 uv = gl_TexCoord[0].xy;
+  // Coordinate of primary texel
+  vec2 c1 = uv * tex_d - 0.5 + 1.0/512.0;
+  // Approximate coverage of fragment in texels
+  vec2 width = fwidth(c1);
+  float z = gl_FragCoord.z;
+
+  if (min(width.x, width.y) < 1.0)
+  {
+    // Magnification (sharp bilinear)
+
+    // Compute coordinates of neighbor texels
+    vec2 c2 = vec2(c1.x + 1.0, c1.y);
+    vec2 c3 = vec2(c1.x, c1.y + 1.0);
+    vec2 c4 = vec2(c1.x + 1.0, c1.y + 1.0);
+    // Gather texels
+    vec4 t1 = index2D(tex, c1 / tex_d, z);
+    vec4 t2 = index2D(tex, c2 / tex_d, z);
+    vec4 t3 = index2D(tex, c3 / tex_d, z);
+    vec4 t4 = index2D(tex, c4 / tex_d, z);
+    // Compute mix factors
+    vec2 m = clamp((fract(c1) - 0.5) / width + 0.5, 0.0, 1.0);
+    // Mix texels
+    gl_FragColor = safemix(safemix(t1, t2, m.x), safemix(t3, t4, m.x), m.y);
+  }
+  else
+  {
+    // Minification (anisotropic box average)
+    // Since we don't have mipmaps (they don't make sense for indexed
+    // textures), we need to sample across a rectangle of the full texture.
+
+    // Sample counts in u/v dimensions.  Computed so that more samples are
+    // allocated to longer dimension of fragment if we have to limit sample
+    // count (anisotropy).
+    float ysamp = sqrt(maxsamp * (width.y / width.x));
+    vec2 count = vec2(min(ceil(maxsamp / ysamp), ceil(width.x)), min(ceil(ysamp), ceil(width.y)));
+    // Accumulator for final fragment color
+    vec4 acc = vec4(0.0);
+    // Divisor for acc.rgb to obtain average
+    float divisor = 0.0;
+    // Sample position
+    vec2 p;
+
+    // Accumulate samples across box
+    for (p.x = 0.0; p.x < count.x; ++p.x)
+    {
+      for (p.y = 0.0; p.y < count.y; ++p.y)
+      {
+        vec4 t = index2D(tex, (c1 + p / count) / tex_d, z);
+        if (t.a == 0.0)
+        {
+          // Ignore color value if alpha is 0.
+          // This prevents color values from transparent areas in patches from bleeding
+          // into opaque areas
+          acc.a += t.a;
+        }
+        else
+        {
+          acc += t;
+          ++divisor;
+        }
+      }
+    }
+
+    gl_FragColor = vec4(acc.rgb / divisor, acc.a / (count.x * count.y));
+  }
+}
+#endif

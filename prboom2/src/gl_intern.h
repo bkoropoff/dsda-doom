@@ -63,6 +63,7 @@ typedef enum
   GLTEXTURE_CLAMPXY   = (GLTEXTURE_CLAMPX | GLTEXTURE_CLAMPY),
   GLTEXTURE_INDEXED   = 0x00000100,
   GLTEXTURE_SKYHACK   = 0x00000200,
+  GLTEXTURE_BORDER    = 0x00000400
 } GLTexture_flag_t;
 
 typedef struct gl_strip_coords_s

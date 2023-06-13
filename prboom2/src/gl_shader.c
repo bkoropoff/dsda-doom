@@ -580,6 +580,16 @@ enum
 
 enum
 {
+  FILT_UNIF_TEX,
+  FILT_UNIF_TEX_D,
+  FILT_UNIF_COLORMAP,
+  FILT_UNIF_LIGHTLEVEL,
+  FILT_UNIF_FADE_MODE,
+  FILT_UNIF_DSCALE
+};
+
+enum
+{
   FUZZ_UNIF_TEX,
   FUZZ_UNIF_FUZZ,
   FUZZ_UNIF_TEX_D,
@@ -596,6 +606,7 @@ enum
 };
 
 static shader_t *sh_main = NULL;
+static shader_t *sh_filt = NULL;
 static shader_t *sh_fuzz = NULL;
 static shader_t *sh_sb = NULL;
 
@@ -609,6 +620,21 @@ static const shader_info_t main_info =
     UNIF(MAIN_UNIF_LIGHTLEVEL, "lightlevel", UNIF_1F),
     UNIF(MAIN_UNIF_FADE_MODE, "fade_mode", UNIF_1I),
     UNIF(MAIN_UNIF_DSCALE, "dscale", UNIF_1F),
+    UNIF_END
+  }
+};
+
+static const shader_info_t filt_info =
+{
+  .name = "gls_filt",
+  .unifs =
+  {
+    UNIF(FILT_UNIF_TEX, "tex", UNIF_TEX0),
+    UNIF(FILT_UNIF_TEX_D, "tex_d", UNIF_TEX0D),
+    UNIF(FILT_UNIF_COLORMAP, "colormap", UNIF_TEX2),
+    UNIF(FILT_UNIF_LIGHTLEVEL, "lightlevel", UNIF_1F),
+    UNIF(FILT_UNIF_FADE_MODE, "fade_mode", UNIF_1I),
+    UNIF(FILT_UNIF_DSCALE, "dscale", UNIF_1F),
     UNIF_END
   }
 };
@@ -643,6 +669,7 @@ static const shader_info_t sb_info =
 void glsl_Init(void)
 {
   sh_main = glsl_ShaderLoad(&main_info, NULL);
+  sh_filt = glsl_ShaderLoad(&filt_info, NULL);
   sh_fuzz = glsl_ShaderLoad(&fuzz_info, NULL);
   sh_sb = glsl_ShaderLoad(&sb_info, NULL);
 }
@@ -662,20 +689,30 @@ void glsl_PushMainShader(void)
   int mode = dsda_IntConfig(dsda_config_gl_fade_mode);
   float dscale = MAX(1, dsda_IntConfig(dsda_config_gl_dither_scale));
 
-  glsl_ShaderPush(sh_main,
-                  MAIN_UNIF_FADE_MODE, mode,
-                  MAIN_UNIF_DSCALE, dscale,
-                  UNIF_VAL_END);
+  if (dsda_IntConfig(dsda_config_gl_filter))
+    glsl_ShaderPush(sh_filt,
+                    FILT_UNIF_FADE_MODE, mode,
+                    FILT_UNIF_DSCALE, dscale,
+                    UNIF_VAL_END);
+  else
+    glsl_ShaderPush(sh_main,
+                    MAIN_UNIF_FADE_MODE, mode,
+                    MAIN_UNIF_DSCALE, dscale,
+                    UNIF_VAL_END);
 }
 
 void glsl_PopMainShader(void)
 {
-  glsl_ShaderPop(sh_main);
+  shader_t* sh = dsda_IntConfig(dsda_config_gl_filter) ? sh_filt : sh_main;
+  glsl_ShaderPop(sh);
 }
 
 void glsl_SetLightLevel(float lightlevel)
 {
-  glsl_ShaderUniform(sh_main, MAIN_UNIF_LIGHTLEVEL, lightlevel);
+  if (dsda_IntConfig(dsda_config_gl_filter))
+    glsl_ShaderUniform(sh_filt, FILT_UNIF_LIGHTLEVEL, lightlevel);
+  else
+    glsl_ShaderUniform(sh_main, MAIN_UNIF_LIGHTLEVEL, lightlevel);
 }
 
 void glsl_PushFuzzShader(int tic, int sprite, float ratio)
